@@ -1,8 +1,11 @@
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.routers import auth, health, users
+from app.utils.rate_limit import limiter
 
 
 def create_app() -> FastAPI:
@@ -12,6 +15,9 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    application.state.limiter = limiter
+    application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     application.add_middleware(
         CORSMiddleware,

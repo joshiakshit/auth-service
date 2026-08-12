@@ -101,6 +101,17 @@ async def validate_refresh_token(db: AsyncSession, token: str) -> dict | None:
     return payload
 
 
+def create_password_reset_token(user_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "type": "password_reset",
+        "iat": now,
+        "exp": now + timedelta(minutes=15),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
 async def revoke_all_user_tokens(db: AsyncSession, user_id: uuid.UUID) -> None:
     result = await db.execute(
         select(RefreshToken).where(
