@@ -64,7 +64,7 @@ async def revoke_refresh_token(db: AsyncSession, jti: str) -> bool:
     result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked == False,  # noqa: E712
+            RefreshToken.revoked == False,
         )
     )
     db_token = result.scalar_one_or_none()
@@ -88,7 +88,7 @@ async def validate_refresh_token(db: AsyncSession, token: str) -> dict | None:
     result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked == False,  # noqa: E712
+            RefreshToken.revoked == False,
         )
     )
     db_token = result.scalar_one_or_none()
@@ -116,7 +116,7 @@ async def revoke_all_user_tokens(db: AsyncSession, user_id: uuid.UUID) -> None:
     result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.user_id == user_id,
-            RefreshToken.revoked == False,  # noqa: E712
+            RefreshToken.revoked == False,
         )
     )
     tokens = result.scalars().all()
