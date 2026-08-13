@@ -60,6 +60,7 @@ async def test_login_success(client, test_user):
     assert "access_token" in data
     assert "refresh_token" in data
     assert data["token_type"] == "bearer"
+    assert data["expires_in"] == 900
 
 
 @pytest.mark.asyncio
@@ -121,6 +122,7 @@ async def test_refresh_success(client, test_user):
     new_tokens = response.json()
     assert "access_token" in new_tokens
     assert new_tokens["refresh_token"] != tokens["refresh_token"]
+    assert new_tokens["expires_in"] == 900
 
 
 @pytest.mark.asyncio
