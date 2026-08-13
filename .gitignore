@@ -14,3 +14,4 @@ htmlcov/
 .ruff_cache/
 *.db
 AUTH_SERVICE_REPORT.md
+.claude
