@@ -2,7 +2,7 @@
 
 A standalone authentication service built with FastAPI and PostgreSQL. Provides JWT-based authentication with access/refresh token pairs, an OAuth-style redirect login flow for client applications, and server-rendered login/register pages.
 
-Live at **https://auth.joshiakshit.live**
+Live at **https://auth.joshiakshit.live/login**
 
 ## Features
 
