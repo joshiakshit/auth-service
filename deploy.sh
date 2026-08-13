@@ -13,6 +13,8 @@ docker compose -f docker-compose.prod.yml run --rm auth-service \
 
 docker compose -f docker-compose.prod.yml up -d --no-deps auth-service
 
+docker compose -f docker-compose.prod.yml restart nginx
+
 docker image prune -f
 
 echo "Deploy complete"
