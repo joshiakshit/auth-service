@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 15
+
     APP_ENV: str = "development"
     APP_VERSION: str = "0.1.0"
 
@@ -24,3 +26,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+REGISTERED_CLIENTS: dict[str, dict] = {
+    "portfolio": {
+        "name": "Portfolio",
+        "redirect_uris": ["https://portfolio.joshiakshit.live/callback"],
+    },
+}

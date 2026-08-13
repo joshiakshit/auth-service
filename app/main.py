@@ -7,7 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.routers import auth, health, users
+from app.routers import auth, health, pages, users
 from app.utils.rate_limit import limiter
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -37,9 +37,13 @@ def create_app() -> FastAPI:
         response: Response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         return response
 
     application.include_router(health.router)
+    application.include_router(pages.router)
     application.include_router(auth.router, prefix="/api/v1")
     application.include_router(users.router, prefix="/api/v1")
 

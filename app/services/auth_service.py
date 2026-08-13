@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.user import User
 from app.services import token_service
 from app.utils.security import hash_password, verify_password
@@ -44,6 +45,11 @@ async def register_user(db: AsyncSession, email: str, password: str) -> User:
     return user
 
 
+def update_user_password(user: User, new_password: str) -> None:
+    validate_password_strength(new_password)
+    user.hashed_password = hash_password(new_password)
+
+
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -71,4 +77,5 @@ async def create_tokens(db: AsyncSession, user_id: uuid.UUID) -> dict:
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     }

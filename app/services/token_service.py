@@ -107,7 +107,7 @@ def create_password_reset_token(user_id: str) -> str:
         "sub": user_id,
         "type": "password_reset",
         "iat": now,
-        "exp": now + timedelta(minutes=15),
+        "exp": now + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 

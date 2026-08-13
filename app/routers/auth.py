@@ -19,7 +19,6 @@ from app.schemas.auth import (
 from app.schemas.user import UserRead
 from app.services import auth_service, email_service, token_service
 from app.utils.rate_limit import limiter
-from app.utils.security import hash_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -114,8 +113,7 @@ async def confirm_password_reset(body: PasswordResetConfirm, db: AsyncSession = 
             detail="Invalid reset token",
         )
 
-    auth_service.validate_password_strength(body.new_password)
-    user.hashed_password = hash_password(body.new_password)
+    auth_service.update_user_password(user, body.new_password)
     await token_service.revoke_all_user_tokens(db, user.id)
     await db.flush()
 
