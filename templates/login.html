@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — Auth Service{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="brand">
+    <span class="brand-name">Auth Service</span>
+    <h1 class="brand-heading">
+      {% if client_name %}Sign in to {{ client_name }}{% else %}Sign in to your account{% endif %}
+    </h1>
+  </div>
+
+  <div class="card">
+    <form class="form" id="loginForm" novalidate>
+      <div class="error-message" id="errorBanner">
+        <svg class="error-icon" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0V5zm.75 6.5a.875.875 0 100-1.75.875.875 0 000 1.75z"/>
+        </svg>
+        <span id="errorText"></span>
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <div class="input-wrapper">
+          <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="field-footer">
+          <a href="/forgot-password" class="forgot-link">Forgot password?</a>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">
+        <span class="btn-text">Sign in</span>
+        <span class="spinner"></span>
+      </button>
+    </form>
+  </div>
+
+  <p class="footer-text">
+    Don't have an account? <a href="#" id="registerLink">Create one</a>
+  </p>
+</div>
+
+<script>
+  var form = document.getElementById('loginForm');
+  var emailInput = document.getElementById('email');
+  var passwordInput = document.getElementById('password');
+  var submitBtn = document.getElementById('submitBtn');
+  var errorBanner = document.getElementById('errorBanner');
+  var errorText = document.getElementById('errorText');
+  var togglePassword = document.getElementById('togglePassword');
+  var registerLink = document.getElementById('registerLink');
+
+  registerLink.href = '/register' + buildFlowParams();
+
+  togglePassword.addEventListener('click', function() {
+    var isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    togglePassword.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+  });
+
+  [emailInput, passwordInput].forEach(function(input) {
+    input.addEventListener('input', function() {
+      input.classList.remove('error');
+      errorBanner.classList.remove('visible');
+    });
+  });
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    errorBanner.classList.remove('visible');
+    emailInput.classList.remove('error');
+    passwordInput.classList.remove('error');
+
+    var email = emailInput.value.trim();
+    var password = passwordInput.value;
+
+    if (!email) {
+      emailInput.classList.add('error');
+      showError('Please enter your email address');
+      emailInput.focus();
+      return;
+    }
+
+    if (!password) {
+      passwordInput.classList.add('error');
+      showError('Please enter your password');
+      passwordInput.focus();
+      return;
+    }
+
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+
+    fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    })
+    .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+    .then(function(result) {
+      if (!result.ok) {
+        showError(result.data.detail || 'Invalid email or password');
+        emailInput.classList.add('error');
+        passwordInput.classList.add('error');
+        return;
+      }
+
+      var ctx = window.__AUTH_CONTEXT__;
+      if (ctx.redirectUri) {
+        window.location.href = ctx.redirectUri + '#token=' + result.data.access_token;
+      } else {
+        submitBtn.innerHTML = '<span class="btn-text" style="visibility:visible">Signed in</span>';
+        submitBtn.style.background = 'var(--success)';
+      }
+    })
+    .catch(function() {
+      showError('Unable to connect to the server');
+    })
+    .finally(function() {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+    });
+  });
+
+  function showError(msg) {
+    errorText.textContent = msg;
+    errorBanner.classList.add('visible');
+  }
+</script>
+{% endblock %}
