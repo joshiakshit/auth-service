@@ -81,7 +81,9 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/password-reset/request", response_model=MessageResponse)
 @limiter.limit("3/minute")
 async def request_password_reset(
-    request: Request, body: PasswordResetRequest, db: AsyncSession = Depends(get_db),
+    request: Request,
+    body: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
