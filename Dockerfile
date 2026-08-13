@@ -24,7 +24,6 @@ COPY alembic/ alembic/
 COPY alembic.ini .
 COPY app/ app/
 COPY templates/ templates/
-COPY static/ static/
 
 RUN chown -R appuser:appuser /app
 USER appuser
