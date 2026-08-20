@@ -8,3 +8,4 @@ async def test_health_check(client):
     data = response.json()
     assert data["status"] == "ok"
     assert "version" in data
+    assert data["database"] == "connected"
