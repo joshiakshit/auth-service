@@ -43,6 +43,7 @@ services:
       - auth-service
     networks:
       - backend
+      - shared
 
   certbot:
     image: certbot/certbot
@@ -58,3 +59,5 @@ volumes:
 
 networks:
   backend:
+  shared:
+    external: true
