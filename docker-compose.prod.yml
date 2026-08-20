@@ -31,6 +31,8 @@ services:
 
 volumes:
   pgdata:
+    name: services_pgdata
+    external: true
 
 networks:
   backend:
