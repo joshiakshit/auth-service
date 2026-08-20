@@ -32,4 +32,11 @@ REGISTERED_CLIENTS: dict[str, dict] = {
         "name": "Portfolio",
         "redirect_uris": ["https://portfolio.joshiakshit.live/callback"],
     },
+    "qmail": {
+        "name": "QMail",
+        "redirect_uris": [
+            "http://localhost:5173/callback",
+            "https://qmail.joshiakshit.live/callback",
+        ],
+    },
 }
