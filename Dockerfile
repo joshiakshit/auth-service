@@ -23,7 +23,6 @@ RUN groupadd --gid 1000 appuser && useradd --uid 1000 --gid appuser --no-create-
 COPY alembic/ alembic/
 COPY alembic.ini .
 COPY app/ app/
-COPY templates/ templates/
 
 RUN chown -R appuser:appuser /app
 USER appuser

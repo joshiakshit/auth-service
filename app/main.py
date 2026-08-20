@@ -1,19 +1,14 @@
-from pathlib import Path
-
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette import status
 
 from app.config import settings
-from app.routers import auth, health, pages, users
+from app.routers import auth, health, users
 from app.utils.rate_limit import limiter
-
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
 def create_app() -> FastAPI:
@@ -57,12 +52,8 @@ def create_app() -> FastAPI:
         return response
 
     application.include_router(health.router)
-    application.include_router(pages.router)
     application.include_router(auth.router, prefix="/api/v1")
     application.include_router(users.router, prefix="/api/v1")
-
-    if STATIC_DIR.exists():
-        application.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     return application
 

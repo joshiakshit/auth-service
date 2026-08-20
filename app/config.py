@@ -26,17 +26,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-REGISTERED_CLIENTS: dict[str, dict] = {
-    "portfolio": {
-        "name": "Portfolio",
-        "redirect_uris": ["https://portfolio.joshiakshit.live/callback"],
-    },
-    "qmail": {
-        "name": "QMail",
-        "redirect_uris": [
-            "http://localhost:5173/callback",
-            "https://qmail.joshiakshit.live/callback",
-        ],
-    },
-}
