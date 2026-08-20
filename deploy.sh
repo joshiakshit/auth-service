@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_DIR="/opt/services"
+APP_DIR="/opt/services/auth-service"
 IMAGE_TAG="${1:-latest}"
 
 cd "$APP_DIR"
@@ -15,4 +15,4 @@ docker compose -f docker-compose.prod.yml up -d --no-deps auth-service
 
 docker image prune -f
 
-echo "Deploy complete"
+echo "Auth service deploy complete"
