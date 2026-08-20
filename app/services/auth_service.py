@@ -29,7 +29,9 @@ def validate_password_strength(password: str) -> None:
         )
 
 
-async def register_user(db: AsyncSession, email: str, password: str) -> User:
+async def register_user(
+    db: AsyncSession, email: str, password: str, name: str | None = None
+) -> User:
     validate_password_strength(password)
 
     result = await db.execute(select(User).where(User.email == email))
@@ -39,7 +41,7 @@ async def register_user(db: AsyncSession, email: str, password: str) -> User:
             detail="An account with this email already exists",
         )
 
-    user = User(email=email, hashed_password=hash_password(password))
+    user = User(email=email, hashed_password=hash_password(password), name=name)
     db.add(user)
     await db.flush()
     return user

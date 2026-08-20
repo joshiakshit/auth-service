@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class UserRead(BaseModel):
     id: uuid.UUID
     email: str
+    name: str | None = None
     is_active: bool
     is_verified: bool
     created_at: datetime

@@ -26,7 +26,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
 async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    user = await auth_service.register_user(db, body.email, body.password)
+    user = await auth_service.register_user(db, body.email, body.password, body.name)
     return user
 
 
