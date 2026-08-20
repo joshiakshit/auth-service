@@ -30,7 +30,11 @@ def validate_password_strength(password: str) -> None:
 
 
 async def register_user(
-    db: AsyncSession, email: str, password: str, name: str | None = None
+    db: AsyncSession,
+    email: str,
+    password: str,
+    name: str | None = None,
+    username: str | None = None,
 ) -> User:
     validate_password_strength(password)
 
@@ -41,7 +45,20 @@ async def register_user(
             detail="An account with this email already exists",
         )
 
-    user = User(email=email, hashed_password=hash_password(password), name=name)
+    if username:
+        result = await db.execute(select(User).where(User.username == username))
+        if result.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken",
+            )
+
+    user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        name=name,
+        username=username,
+    )
     db.add(user)
     await db.flush()
     return user

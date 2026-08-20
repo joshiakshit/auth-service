@@ -8,6 +8,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.auth import (
+    ErrorResponse,
     LoginRequest,
     MessageResponse,
     PasswordResetConfirm,
@@ -23,14 +24,29 @@ from app.utils.rate_limit import limiter
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        409: {"model": ErrorResponse, "description": "Email or username already taken"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+    },
+)
 @limiter.limit("3/minute")
 async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    user = await auth_service.register_user(db, body.email, body.password, body.name)
+    user = await auth_service.register_user(db, body.email, body.password, body.name, body.username)
     return user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Invalid credentials"},
+        403: {"model": ErrorResponse, "description": "Account deactivated"},
+    },
+)
 @limiter.limit("5/minute")
 async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = await auth_service.authenticate_user(db, body.email, body.password)
@@ -38,7 +54,14 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
     return tokens
 
 
-@router.post("/logout", response_model=MessageResponse)
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid refresh token"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+)
 async def logout(
     body: RefreshRequest,
     db: AsyncSession = Depends(get_db),
@@ -61,7 +84,11 @@ async def logout(
     return {"message": "Successfully logged out"}
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    responses={401: {"model": ErrorResponse, "description": "Invalid or expired refresh token"}},
+)
 async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     payload = await token_service.validate_refresh_token(db, body.refresh_token)
     if payload is None:

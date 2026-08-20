@@ -5,6 +5,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str | None = None
+    username: str | None = None
 
 
 class LoginRequest(BaseModel):
@@ -34,3 +35,7 @@ class PasswordResetConfirm(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ErrorResponse(BaseModel):
+    detail: str

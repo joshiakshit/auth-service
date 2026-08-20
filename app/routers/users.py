@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.auth import MessageResponse
+from app.schemas.auth import ErrorResponse, MessageResponse
 from app.schemas.user import PasswordChange, UserRead
 from app.services import auth_service
 from app.utils.security import verify_password
@@ -12,12 +12,24 @@ from app.utils.security import verify_password
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me",
+    response_model=UserRead,
+    responses={401: {"model": ErrorResponse, "description": "Not authenticated"}},
+)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.patch("/me/password", response_model=MessageResponse)
+@router.patch(
+    "/me/password",
+    response_model=MessageResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Current password incorrect"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        422: {"model": ErrorResponse, "description": "Weak password"},
+    },
+)
 async def change_password(
     body: PasswordChange,
     current_user: User = Depends(get_current_user),
