@@ -1,10 +1,13 @@
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette import status
 
 from app.config import settings
 from app.routers import auth, health, pages, users
@@ -23,6 +26,17 @@ def create_app() -> FastAPI:
 
     application.state.limiter = limiter
     application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        messages = []
+        for error in exc.errors():
+            field = " -> ".join(str(loc) for loc in error["loc"] if loc != "body")
+            messages.append(f"{field}: {error['msg']}" if field else error["msg"])
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": "; ".join(messages)},
+        )
 
     application.add_middleware(
         CORSMiddleware,
