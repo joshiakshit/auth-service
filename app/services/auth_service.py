@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -38,21 +39,6 @@ async def register_user(
 ) -> User:
     validate_password_strength(password)
 
-    result = await db.execute(select(User).where(User.email == email))
-    if result.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists",
-        )
-
-    if username:
-        result = await db.execute(select(User).where(User.username == username))
-        if result.scalar_one_or_none() is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This username is already taken",
-            )
-
     user = User(
         email=email,
         hashed_password=hash_password(password),
@@ -60,8 +46,23 @@ async def register_user(
         username=username,
     )
     db.add(user)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise _registration_conflict(exc) from exc
     return user
+
+
+def _registration_conflict(exc: IntegrityError) -> HTTPException:
+    constraint = str(getattr(getattr(exc, "orig", None), "constraint_name", "") or "")
+    if "username" in constraint:
+        detail = "This username is already taken"
+    elif "email" in constraint:
+        detail = "An account with this email already exists"
+    else:
+        detail = "An account with these details already exists"
+    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
 def update_user_password(user: User, new_password: str) -> None:
