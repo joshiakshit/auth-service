@@ -38,4 +38,5 @@ class MessageResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
+    error: str
     detail: str

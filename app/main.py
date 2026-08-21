@@ -2,13 +2,32 @@ from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette import status
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.routers import auth, health, users
 from app.utils.rate_limit import limiter
+
+_ERROR_SLUGS = {
+    400: "bad_request",
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not_found",
+    409: "conflict",
+    422: "validation_error",
+    429: "rate_limited",
+    500: "internal_error",
+}
+
+
+def _error_slug(status_code: int) -> str:
+    return _ERROR_SLUGS.get(status_code, "error")
+
+
+def _error_body(status_code: int, detail: str) -> dict:
+    return {"error": _error_slug(status_code), "detail": detail}
 
 
 def create_app() -> FastAPI:
@@ -20,7 +39,24 @@ def create_app() -> FastAPI:
     )
 
     application.state.limiter = limiter
-    application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    @application.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content=_error_body(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Rate limit exceeded: {exc.detail}",
+            ),
+        )
+
+    @application.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_error_body(exc.status_code, str(exc.detail)),
+            headers=getattr(exc, "headers", None),
+        )
 
     @application.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -30,7 +66,7 @@ def create_app() -> FastAPI:
             messages.append(f"{field}: {error['msg']}" if field else error["msg"])
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": "; ".join(messages)},
+            content=_error_body(status.HTTP_422_UNPROCESSABLE_ENTITY, "; ".join(messages)),
         )
 
     application.add_middleware(
