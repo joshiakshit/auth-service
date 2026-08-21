@@ -20,6 +20,11 @@ services:
     image: ghcr.io/joshiakshit/auth-service:latest
     restart: unless-stopped
     env_file: .env
+    environment:
+      JWT_PRIVATE_KEY_PATH: /app/keys/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: /app/keys/jwt_public.pem
+    volumes:
+      - ./keys:/app/keys:ro
     depends_on:
       db:
         condition: service_healthy
