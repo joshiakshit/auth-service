@@ -24,6 +24,14 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class EmailVerificationConfirm(BaseModel):
+    token: str
+
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 

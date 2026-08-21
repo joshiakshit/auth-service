@@ -118,6 +118,17 @@ def create_password_reset_token(user_id: str) -> str:
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
+def create_email_verification_token(user_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "type": "email_verification",
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
 async def consume_reset_token(db: AsyncSession, token: str) -> bool:
     """Claim a password reset token for one-time use.
 

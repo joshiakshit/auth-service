@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 15
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 1440
 
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     ACCOUNT_LOCKOUT_MINUTES: int = 15

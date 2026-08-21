@@ -10,8 +10,9 @@ Live at **https://auth.joshiakshit.live/login**
 - JWT access tokens (15 min) and refresh tokens (7 day, rotated)
 - OAuth-style redirect flow — client apps redirect users here to authenticate, then receive tokens via URL fragment callback
 - Server-rendered login, register, and forgot-password pages with dark/light theme
-- Password reset via email token
-- Rate limiting (per-IP, per-endpoint)
+- Password reset via email token (single-use)
+- Email verification flow with `is_verified` flag
+- Rate limiting (per-IP, per-endpoint) and account lockout after repeated failed logins
 - Security headers (HSTS, X-Frame-Options, CSP permissions)
 
 ## Tech Stack
@@ -33,11 +34,19 @@ Live at **https://auth.joshiakshit.live/login**
 | POST | `/api/v1/auth/refresh` | Rotate tokens |
 | POST | `/api/v1/auth/password-reset/request` | Request reset email |
 | POST | `/api/v1/auth/password-reset/confirm` | Set new password |
+| POST | `/api/v1/auth/verify-email/request` | Request verification email |
+| POST | `/api/v1/auth/verify-email` | Confirm email address |
 | GET | `/api/v1/users/me` | Get current user profile |
 | PATCH | `/api/v1/users/me/password` | Change password |
 | GET | `/health` | Health check |
 
 Full API docs available at `/docs` (Swagger) and `/redoc`.
+
+> **Password reset vs. encrypted data:** the account password reset only
+> restores access to the account. If a client system protects data with a
+> separate encryption passphrase (for example an encrypted vault), resetting
+> the account password does **not** recover that data. These are different
+> credentials, and any UI built on this service must say so clearly.
 
 ## Redirect Login Flow
 

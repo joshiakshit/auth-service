@@ -10,6 +10,8 @@ from app.database import get_db
 from app.dependencies import get_current_user, security
 from app.models.user import User
 from app.schemas.auth import (
+    EmailVerificationConfirm,
+    EmailVerificationRequest,
     ErrorResponse,
     LoginRequest,
     MessageResponse,
@@ -38,7 +40,55 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @limiter.limit("3/minute")
 async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     user = await auth_service.register_user(db, body.email, body.password, body.name, body.username)
+    verification_token = token_service.create_email_verification_token(str(user.id))
+    await email_service.send_verification_email(user.email, verification_token)
     return user
+
+
+@router.post("/verify-email/request", response_model=MessageResponse)
+@limiter.limit("3/minute")
+async def request_email_verification(
+    request: Request,
+    body: EmailVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if user is not None and not user.is_verified:
+        token = token_service.create_email_verification_token(str(user.id))
+        await email_service.send_verification_email(user.email, token)
+
+    return {"message": "If an unverified account with that email exists, a link has been sent"}
+
+
+@router.post(
+    "/verify-email",
+    response_model=MessageResponse,
+    responses={400: {"model": ErrorResponse, "description": "Invalid or expired token"}},
+)
+async def verify_email(body: EmailVerificationConfirm, db: AsyncSession = Depends(get_db)):
+    payload = token_service.decode_token(body.token)
+    if payload is None or payload.get("type") != "email_verification":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    user_id = UUID(payload["sub"])
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification token",
+        )
+
+    user.is_verified = True
+    await db.flush()
+
+    return {"message": "Email verified successfully"}
 
 
 @router.post(
