@@ -98,6 +98,29 @@ async def test_logout_success(client, test_user):
 
 
 @pytest.mark.asyncio
+async def test_logout_revokes_access_token(client, test_user):
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "test@example.com", "password": "Test1234"},
+    )
+    tokens = login.json()
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+    before = await client.get("/api/v1/users/me", headers=headers)
+    assert before.status_code == 200
+
+    logout = await client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": tokens["refresh_token"]},
+        headers=headers,
+    )
+    assert logout.status_code == 200
+
+    after = await client.get("/api/v1/users/me", headers=headers)
+    assert after.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_logout_without_auth(client):
     response = await client.post(
         "/api/v1/auth/logout",

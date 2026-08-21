@@ -1,11 +1,13 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, security
 from app.models.user import User
 from app.schemas.auth import (
     ErrorResponse,
@@ -65,6 +67,7 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
 async def logout(
     body: RefreshRequest,
     db: AsyncSession = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     _current_user: User = Depends(get_current_user),
 ):
     payload = token_service.decode_token(body.refresh_token)
@@ -80,6 +83,11 @@ async def logout(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token already revoked or not found",
         )
+
+    access_payload = token_service.decode_token(credentials.credentials)
+    if access_payload is not None and access_payload.get("jti"):
+        expires_at = datetime.fromtimestamp(access_payload["exp"], tz=timezone.utc)
+        await token_service.revoke_access_token(db, access_payload["jti"], expires_at)
 
     return {"message": "Successfully logged out"}
 

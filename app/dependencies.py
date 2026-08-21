@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
-from app.services.token_service import decode_token
+from app.services.token_service import decode_token, is_access_token_revoked
 
 security = HTTPBearer()
 
@@ -22,6 +22,13 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
+        )
+
+    jti = payload.get("jti")
+    if jti is not None and await is_access_token_revoked(db, jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
         )
 
     try:

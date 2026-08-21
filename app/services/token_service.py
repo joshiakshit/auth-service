@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.refresh_token import RefreshToken
+from app.models.revoked_access_token import RevokedAccessToken
 from app.models.used_reset_token import UsedResetToken
 
 
@@ -17,6 +18,7 @@ def create_access_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "access",
+        "jti": str(uuid.uuid4()),
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
@@ -131,6 +133,23 @@ async def consume_reset_token(db: AsyncSession, token: str) -> bool:
     result = await db.execute(stmt)
     await db.flush()
     return result.rowcount == 1
+
+
+async def revoke_access_token(db: AsyncSession, jti: str, expires_at: datetime) -> None:
+    stmt = (
+        pg_insert(RevokedAccessToken)
+        .values(jti=jti, expires_at=expires_at)
+        .on_conflict_do_nothing(index_elements=["jti"])
+    )
+    await db.execute(stmt)
+    await db.flush()
+
+
+async def is_access_token_revoked(db: AsyncSession, jti: str) -> bool:
+    result = await db.execute(
+        select(RevokedAccessToken.id).where(RevokedAccessToken.jti == jti)
+    )
+    return result.first() is not None
 
 
 async def revoke_all_user_tokens(db: AsyncSession, user_id: uuid.UUID) -> None:
