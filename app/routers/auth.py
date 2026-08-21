@@ -90,14 +90,12 @@ async def logout(
     responses={401: {"model": ErrorResponse, "description": "Invalid or expired refresh token"}},
 )
 async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    payload = await token_service.validate_refresh_token(db, body.refresh_token)
+    payload = await token_service.consume_refresh_token(db, body.refresh_token)
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
         )
-
-    await token_service.revoke_refresh_token(db, payload["jti"])
 
     user_id = UUID(payload["sub"])
     tokens = await auth_service.create_tokens(db, user_id)

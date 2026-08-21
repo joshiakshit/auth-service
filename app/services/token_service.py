@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -62,20 +62,21 @@ async def store_refresh_token(db: AsyncSession, user_id: uuid.UUID, jti: str) ->
 async def revoke_refresh_token(db: AsyncSession, jti: str) -> bool:
     token_hash = hash_token(jti)
     result = await db.execute(
-        select(RefreshToken).where(
-            RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked == False,
-        )
+        update(RefreshToken)
+        .where(RefreshToken.token_hash == token_hash, RefreshToken.revoked == False)
+        .values(revoked=True)
     )
-    db_token = result.scalar_one_or_none()
-    if db_token is None:
-        return False
-    db_token.revoked = True
     await db.flush()
-    return True
+    return result.rowcount > 0
 
 
-async def validate_refresh_token(db: AsyncSession, token: str) -> dict | None:
+async def consume_refresh_token(db: AsyncSession, token: str) -> dict | None:
+    """Atomically validate and revoke a refresh token in one round trip.
+
+    Using a single conditional UPDATE (rather than a separate read-then-write)
+    means Postgres's row lock decides the race: two concurrent calls for the
+    same token can never both succeed.
+    """
     payload = decode_token(token)
     if payload is None or payload.get("type") != "refresh":
         return None
@@ -86,16 +87,17 @@ async def validate_refresh_token(db: AsyncSession, token: str) -> dict | None:
 
     token_hash = hash_token(jti)
     result = await db.execute(
-        select(RefreshToken).where(
+        update(RefreshToken)
+        .where(
             RefreshToken.token_hash == token_hash,
             RefreshToken.revoked == False,
+            RefreshToken.expires_at > datetime.now(timezone.utc),
         )
+        .values(revoked=True)
     )
-    db_token = result.scalar_one_or_none()
-    if db_token is None:
-        return None
+    await db.flush()
 
-    if db_token.expires_at < datetime.now(timezone.utc):
+    if result.rowcount != 1:
         return None
 
     return payload
