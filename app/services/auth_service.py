@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -74,7 +75,15 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
+    if user is not None and _is_locked(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is temporarily locked due to failed login attempts",
+        )
+
     if user is None or not verify_password(password, user.hashed_password):
+        if user is not None:
+            await _record_failed_login(db, user)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -89,7 +98,27 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     if needs_rehash(user.hashed_password):
         user.hashed_password = hash_password(password)
 
+    if user.failed_login_attempts or user.locked_until:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+
     return user
+
+
+def _is_locked(user: User) -> bool:
+    return user.locked_until is not None and user.locked_until > datetime.now(timezone.utc)
+
+
+async def _record_failed_login(db: AsyncSession, user: User) -> None:
+    user.failed_login_attempts += 1
+    if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.ACCOUNT_LOCKOUT_MINUTES
+        )
+        user.failed_login_attempts = 0
+    # Commit here so the failed attempt survives the 401 that follows;
+    # the request's own transaction would otherwise roll it back.
+    await db.commit()
 
 
 async def create_tokens(db: AsyncSession, user_id: uuid.UUID) -> dict:
