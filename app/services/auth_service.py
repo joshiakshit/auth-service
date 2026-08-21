@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.user import User
 from app.services import token_service
-from app.utils.security import hash_password, verify_password
+from app.utils.security import hash_password, needs_rehash, verify_password
 
 
 def validate_password_strength(password: str) -> None:
@@ -85,6 +85,9 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated",
         )
+
+    if needs_rehash(user.hashed_password):
+        user.hashed_password = hash_password(password)
 
     return user
 
