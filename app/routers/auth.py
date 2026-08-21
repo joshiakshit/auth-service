@@ -128,6 +128,15 @@ async def confirm_password_reset(body: PasswordResetConfirm, db: AsyncSession = 
             detail="Invalid or expired reset token",
         )
 
+    auth_service.validate_password_strength(body.new_password)
+
+    claimed = await token_service.consume_reset_token(db, body.token)
+    if not claimed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link has already been used",
+        )
+
     user_id = UUID(payload["sub"])
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

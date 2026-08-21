@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 
 import pytest
 
@@ -32,6 +33,24 @@ async def test_refresh_token_concurrent_double_spend_rejected(session_factory):
             payload = await token_service.consume_refresh_token(session, refresh_token)
             await session.commit()
             return payload is not None
+
+    results = await asyncio.gather(*(consume() for _ in range(CONCURRENT_ATTEMPTS)))
+
+    assert results.count(True) == 1
+
+
+@pytest.mark.asyncio
+async def test_reset_token_concurrent_single_use(session_factory):
+    reset_token = token_service.create_password_reset_token(str(uuid.uuid4()))
+
+    barrier = asyncio.Barrier(CONCURRENT_ATTEMPTS)
+
+    async def consume():
+        async with session_factory() as session:
+            await barrier.wait()
+            claimed = await token_service.consume_reset_token(session, reset_token)
+            await session.commit()
+            return claimed
 
     results = await asyncio.gather(*(consume() for _ in range(CONCURRENT_ATTEMPTS)))
 

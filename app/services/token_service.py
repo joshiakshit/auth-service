@@ -4,10 +4,12 @@ from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.refresh_token import RefreshToken
+from app.models.used_reset_token import UsedResetToken
 
 
 def create_access_token(user_id: str) -> str:
@@ -112,6 +114,23 @@ def create_password_reset_token(user_id: str) -> str:
         "exp": now + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+async def consume_reset_token(db: AsyncSession, token: str) -> bool:
+    """Claim a password reset token for one-time use.
+
+    The claim is a single INSERT guarded by a UNIQUE constraint, so two
+    concurrent confirmations of the same token can never both succeed:
+    the loser's row is skipped and this returns False.
+    """
+    stmt = (
+        pg_insert(UsedResetToken)
+        .values(token_hash=hash_token(token))
+        .on_conflict_do_nothing(index_elements=["token_hash"])
+    )
+    result = await db.execute(stmt)
+    await db.flush()
+    return result.rowcount == 1
 
 
 async def revoke_all_user_tokens(db: AsyncSession, user_id: uuid.UUID) -> None:

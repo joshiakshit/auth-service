@@ -170,3 +170,34 @@ async def test_password_reset_confirm_invalid_token(client):
         json={"token": "bad.token.here", "new_password": "NewPass1"},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_password_reset_confirm_success(client, test_user):
+    from app.services import token_service
+
+    token = token_service.create_password_reset_token(str(test_user.id))
+    response = await client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": token, "new_password": "NewPass1"},
+    )
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_password_reset_confirm_token_single_use(client, test_user):
+    from app.services import token_service
+
+    token = token_service.create_password_reset_token(str(test_user.id))
+
+    first = await client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": token, "new_password": "NewPass1"},
+    )
+    assert first.status_code == 200
+
+    second = await client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": token, "new_password": "OtherPass2"},
+    )
+    assert second.status_code == 400
