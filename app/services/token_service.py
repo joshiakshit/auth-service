@@ -11,18 +11,32 @@ from app.config import settings
 from app.models.refresh_token import RefreshToken
 from app.models.revoked_access_token import RevokedAccessToken
 from app.models.used_reset_token import UsedResetToken
+from app.models.user import User
+from app.utils import jwt_keys
 
 
-def create_access_token(user_id: str) -> str:
+def _encode(payload: dict) -> str:
+    return jwt.encode(
+        payload,
+        jwt_keys.PRIVATE_KEY,
+        algorithm=jwt_keys.ALGORITHM,
+        headers={"kid": jwt_keys.KID},
+    )
+
+
+def create_access_token(user: User) -> str:
     now = datetime.now(timezone.utc)
     payload = {
-        "sub": user_id,
+        "sub": str(user.id),
+        "email": user.email,
+        "email_verified": user.is_verified,
+        "name": user.name,
         "type": "access",
         "jti": str(uuid.uuid4()),
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return _encode(payload)
 
 
 def create_refresh_token_value(user_id: str) -> tuple[str, str]:
@@ -35,8 +49,7 @@ def create_refresh_token_value(user_id: str) -> tuple[str, str]:
         "iat": now,
         "exp": now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     }
-    raw_token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-    return raw_token, jti
+    return _encode(payload), jti
 
 
 def hash_token(jti: str) -> str:
@@ -45,7 +58,7 @@ def hash_token(jti: str) -> str:
 
 def decode_token(token: str) -> dict | None:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, jwt_keys.PUBLIC_KEY, algorithms=[jwt_keys.ALGORITHM])
         return payload
     except JWTError:
         return None
@@ -115,7 +128,7 @@ def create_password_reset_token(user_id: str) -> str:
         "iat": now,
         "exp": now + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return _encode(payload)
 
 
 def create_email_verification_token(user_id: str) -> str:
@@ -126,7 +139,7 @@ def create_email_verification_token(user_id: str) -> str:
         "iat": now,
         "exp": now + timedelta(minutes=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return _encode(payload)
 
 
 async def consume_reset_token(db: AsyncSession, token: str) -> bool:
@@ -157,9 +170,7 @@ async def revoke_access_token(db: AsyncSession, jti: str, expires_at: datetime) 
 
 
 async def is_access_token_revoked(db: AsyncSession, jti: str) -> bool:
-    result = await db.execute(
-        select(RevokedAccessToken.id).where(RevokedAccessToken.jti == jti)
-    )
+    result = await db.execute(select(RevokedAccessToken.id).where(RevokedAccessToken.jti == jti))
     return result.first() is not None
 
 

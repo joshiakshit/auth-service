@@ -7,7 +7,7 @@ from starlette import status
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
-from app.routers import auth, health, users
+from app.routers import auth, health, jwks, users
 from app.utils.rate_limit import limiter
 
 _ERROR_SLUGS = {
@@ -88,6 +88,7 @@ def create_app() -> FastAPI:
         return response
 
     application.include_router(health.router)
+    application.include_router(jwks.router)
     application.include_router(auth.router, prefix="/api/v1")
     application.include_router(users.router, prefix="/api/v1")
 

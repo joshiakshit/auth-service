@@ -102,7 +102,7 @@ async def verify_email(body: EmailVerificationConfirm, db: AsyncSession = Depend
 @limiter.limit("5/minute")
 async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = await auth_service.authenticate_user(db, body.email, body.password)
-    tokens = await auth_service.create_tokens(db, user.id)
+    tokens = await auth_service.create_tokens(db, user)
     return tokens
 
 
@@ -156,7 +156,15 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
         )
 
     user_id = UUID(payload["sub"])
-    tokens = await auth_service.create_tokens(db, user_id)
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    tokens = await auth_service.create_tokens(db, user)
     return tokens
 
 

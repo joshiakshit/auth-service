@@ -1,5 +1,4 @@
 import re
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
@@ -121,10 +120,10 @@ async def _record_failed_login(db: AsyncSession, user: User) -> None:
     await db.commit()
 
 
-async def create_tokens(db: AsyncSession, user_id: uuid.UUID) -> dict:
-    access_token = token_service.create_access_token(str(user_id))
-    refresh_token, jti = token_service.create_refresh_token_value(str(user_id))
-    await token_service.store_refresh_token(db, user_id, jti)
+async def create_tokens(db: AsyncSession, user: User) -> dict:
+    access_token = token_service.create_access_token(user)
+    refresh_token, jti = token_service.create_refresh_token_value(str(user.id))
+    await token_service.store_refresh_token(db, user.id, jti)
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,

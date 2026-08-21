@@ -18,7 +18,7 @@ Live at **https://auth.joshiakshit.live/login**
 ## Tech Stack
 
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 (async), asyncpg
-- **Auth**: python-jose (JWT), bcrypt (password hashing)
+- **Auth**: python-jose (RS256 JWT + JWKS), argon2id password hashing
 - **Database**: PostgreSQL 16
 - **Templates**: Jinja2
 - **Infrastructure**: Docker, Nginx, Let's Encrypt, Azure VM
@@ -39,6 +39,7 @@ Live at **https://auth.joshiakshit.live/login**
 | GET | `/api/v1/users/me` | Get current user profile |
 | PATCH | `/api/v1/users/me/password` | Change password |
 | GET | `/health` | Health check |
+| GET | `/.well-known/jwks.json` | Public keys for offline JWT verification |
 
 Full API docs available at `/docs` (Swagger) and `/redoc`.
 
